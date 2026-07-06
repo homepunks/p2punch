@@ -16,15 +16,13 @@ func main() {
 		return
 	}
 
-	log.Println(*roomPtr)
-
 	conn, err := net.Dial("udp", "127.0.0.1:6969")
 	if err != nil {
 		log.Fatalf("could not connect: %v\n", err)
 	}
 	defer conn.Close()
 
-	payload := []byte("simplicity is prerequisite for reliability")
+	payload := []byte(*roomPtr)
 	maxRetries := 3
 
 	for i := 1; i < maxRetries + 1; i++ {
