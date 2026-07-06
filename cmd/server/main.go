@@ -1,10 +1,10 @@
 package main
 
 import (
-	"strings"
-	"net"
-	"log"
 	"errors"
+	"log"
+	"net"
+	"strings"
 )
 
 const (
@@ -31,7 +31,7 @@ func (r *Room) Add(p *Peer) error {
 
 	r.peers[r.count] = p
 	r.count++
-	return nil		
+	return nil
 }
 
 func (r *Room) Len() int {

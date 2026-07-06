@@ -1,9 +1,9 @@
 package main
 
 import (
-	"net"
-	"log"
 	"flag"
+	"log"
+	"net"
 	"time"
 )
 
@@ -25,7 +25,7 @@ func main() {
 	payload := []byte(*roomPtr)
 	maxRetries := 3
 
-	for i := 1; i < maxRetries + 1; i++ {
+	for i := 1; i < maxRetries+1; i++ {
 		_, err = conn.Write(payload)
 		if err == nil {
 			log.Println("successfully sent packets")
@@ -33,7 +33,7 @@ func main() {
 		}
 
 		log.Printf("attempt %v failed. trying again...\n", i)
-		if i < maxRetries - 1 {
+		if i < maxRetries-1 {
 			time.Sleep(time.Second)
 		} else {
 			log.Printf("could not send packets after %v attempts: %v\n", i, err)
