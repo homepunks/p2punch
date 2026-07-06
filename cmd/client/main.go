@@ -3,10 +3,21 @@ package main
 import (
 	"net"
 	"log"
+	"flag"
 	"time"
 )
 
 func main() {
+	roomPtr := flag.String("room", "", "room name for you and your peer")
+	flag.Parse()
+
+	if *roomPtr == "" {
+		log.Println("Please specify your room name!")
+		return
+	}
+
+	log.Println(*roomPtr)
+
 	conn, err := net.Dial("udp", "127.0.0.1:6969")
 	if err != nil {
 		log.Fatalf("could not connect: %v\n", err)
@@ -21,7 +32,7 @@ func main() {
 		if err == nil {
 			log.Println("successfully sent packets")
 			break
-		} 
+		}
 
 		log.Printf("attempt %v failed. trying again...\n", i)
 		if i < maxRetries - 1 {
