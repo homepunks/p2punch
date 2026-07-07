@@ -30,6 +30,15 @@ func main() {
 		_, err = conn.Write(payload)
 		if err == nil {
 			log.Println("successfully sent packets")
+			buf := make([]byte, 1024)
+			n, err := conn.Read(buf)
+			if err != nil {
+				log.Printf("could not receive peer address: %v\n", err)
+				continue
+			}
+
+			log.Printf("PEER: %s, SELF: %s\n", string(buf[:n]), conn.LocalAddr())
+
 			break
 		}
 
@@ -41,4 +50,6 @@ func main() {
 			log.Println("aborting...")
 		}
 	}
+
+	time.Sleep(5 * time.Second)
 }
