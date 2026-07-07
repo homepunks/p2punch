@@ -2,11 +2,11 @@ package main
 
 import (
 	"errors"
-	"sync"
-	"time"
 	"log"
 	"net"
 	"strings"
+	"sync"
+	"time"
 )
 
 const (
@@ -132,4 +132,3 @@ func main() {
 		mu.Unlock()
 	}
 }
-
