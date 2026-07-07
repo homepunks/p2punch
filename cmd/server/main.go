@@ -129,6 +129,7 @@ func main() {
 				r.ExchangePeers(ln)
 			}
 		}
+		mu.Unlock()
 	}
 }
 
