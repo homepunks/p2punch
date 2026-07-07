@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"sync"
+	"time"
 	"log"
 	"net"
 	"strings"
@@ -14,7 +16,7 @@ const (
 var ErrFull = errors.New("a room cannot hold more than 2 peers")
 
 type Peer struct {
-	ip net.UDPAddr
+	ip *net.UDPAddr
 }
 
 type Room struct {
@@ -38,7 +40,25 @@ func (r *Room) Len() int {
 	return r.count
 }
 
-func NewPeer(ip net.UDPAddr) *Peer {
+func (r *Room) ExchangePeers(ln *net.UDPConn) error {
+	peerA := r.peers[0]
+	peerB := r.peers[1]
+	addrPeerA := []byte(peerA.IP())
+	addrPeerB := []byte(peerB.IP())
+
+	_, err := ln.WriteToUDP(addrPeerA, peerB.ip)
+	if err != nil {
+		return err
+	}
+	_, err = ln.WriteToUDP(addrPeerB, peerA.ip)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func NewPeer(ip *net.UDPAddr) *Peer {
 	return &Peer{
 		ip: ip,
 	}
@@ -49,8 +69,6 @@ func (p *Peer) IP() string {
 }
 
 func main() {
-	roomKeeper := make(map[RoomName]*Room)
-
 	addr, err := net.ResolveUDPAddr("udp", HOST)
 	if err != nil {
 		log.Fatalf("could not resolve addr: %v", err)
@@ -63,33 +81,54 @@ func main() {
 	defer ln.Close()
 
 	log.Printf("Listening UDP connections on %v\n", HOST)
-	buf := make([]byte, 1024)
-	for {
-		n, cAddr, err := ln.ReadFromUDP(buf)
-		if err != nil {
-			log.Printf("read error: %v", err)
-			continue
-		}
+	var mu sync.Mutex
+	roomKeeper := make(map[RoomName]*Room)
 
-		roomName := string(buf[:n])
-		roomName = strings.TrimSuffix(roomName, "\n")
-		room, exists := roomKeeper[roomName]
-		if !exists {
-			room := new(Room)
-			peer := NewPeer(*cAddr)
-			room.Add(peer)
-			roomKeeper[roomName] = room
-			log.Printf("Peer 1 <%s> joined. Room %s: %d/2\n", peer.IP(), roomName, room.Len())
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, cAddr, err := ln.ReadFromUDP(buf)
+			if err != nil {
+				log.Printf("read error: %v", err)
+				continue
+			}
 
-			continue
-		}
+			roomName := string(buf[:n])
+			roomName = strings.TrimSuffix(roomName, "\n")
+			mu.Lock()
+			room, exists := roomKeeper[roomName]
+			mu.Unlock()
+			if !exists {
+				room := new(Room)
+				peer := NewPeer(cAddr)
+				room.Add(peer)
+				mu.Lock()
+				roomKeeper[roomName] = room
+				mu.Unlock()
+				log.Printf("Peer 1 <%s> joined. Room %s: %d/2\n", peer.IP(), roomName, room.Len())
 
-		peer := NewPeer(*cAddr)
-		err = room.Add(peer)
-		if err != nil {
-			log.Printf("Client <%s> tried to join room %s: %v\n", peer.IP(), roomName, err)
-			continue
+				continue
+			}
+
+			peer := NewPeer(cAddr)
+			err = room.Add(peer)
+			if err != nil {
+				log.Printf("Client <%s> tried to join room %s: %v\n", peer.IP(), roomName, err)
+				continue
+			}
+			log.Printf("Peer 2 <%s> joined. Room %s: %d/2\n", peer.IP(), roomName, room.Len())
 		}
-		log.Printf("Peer 2 <%s> joined. Room %s: %d/2\n", peer.IP(), roomName, room.Len())
+	}()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		mu.Lock()
+		for _, r := range roomKeeper {
+			if r.Len() == 2 {
+				r.ExchangePeers(ln)
+			}
+		}
 	}
 }
+
