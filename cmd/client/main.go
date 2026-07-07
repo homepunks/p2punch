@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net"
+	"fmt"
 	"time"
 )
 
@@ -12,7 +13,7 @@ func main() {
 	flag.Parse()
 
 	if *roomPtr == "" {
-		log.Println("Please specify your room name!")
+		fmt.Println("Please specify your room name!")
 		return
 	}
 
