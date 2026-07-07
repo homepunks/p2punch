@@ -60,6 +60,11 @@ func (r *Room) ExchangePeers(ln *net.UDPConn) error {
 	return nil
 }
 
+func disconnectClient(ln *net.UDPConn, p *Peer) {
+	msg := []byte("KICKED")
+	ln.WriteToUDP(msg, p.ip)
+}
+
 func NewPeer(ip *net.UDPAddr) *Peer {
 	return &Peer{
 		ip: ip,
@@ -115,7 +120,8 @@ func main() {
 			peer := NewPeer(cAddr)
 			err = room.Add(peer)
 			if err != nil {
-				log.Printf("Client <%s> tried to join room %s: %v\n", peer.IP(), roomName, err)
+				log.Printf("Client <%s> tried to join room %s (already closed): %v\n", peer.IP(), roomName, err)
+				disconnectClient(ln, peer)
 				continue
 			}
 			log.Printf("Peer 2 <%s> joined. Room %s: [%d/2]\n", peer.IP(), roomName, room.Len())
@@ -126,12 +132,12 @@ func main() {
 	defer ticker.Stop()
 	for range ticker.C {
 		mu.Lock()
-		for _, r := range roomKeeper {
+		for name, r := range roomKeeper {
 			if !r.done {
 				if r.Len() == 2 {
 					err := r.ExchangePeers(ln)
 					if err == nil {
-						log.Printf("Peers <%s> and <%s> have exchanged their addresses!\n", r.peers[0].IP(), r.peers[1].IP())
+						log.Printf("%s: peers <%s> and <%s> have exchanged their addresses!\n", name, r.peers[0].IP(), r.peers[1].IP())
 					}
 				}
 			} else {

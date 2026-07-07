@@ -37,6 +37,11 @@ func main() {
 				continue
 			}
 
+			if string(buf[:n]) == "KICKED" {
+				fmt.Println("You cannot join this room, it's already taken")
+				return
+			}
+
 			log.Printf("PEER: %s, SELF: %s\n", string(buf[:n]), conn.LocalAddr())
 
 			break
