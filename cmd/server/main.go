@@ -22,6 +22,7 @@ type Peer struct {
 type Room struct {
 	peers [2]*Peer
 	count int
+	done  bool
 }
 
 type RoomName = string
@@ -55,6 +56,7 @@ func (r *Room) ExchangePeers(ln *net.UDPConn) error {
 		return err
 	}
 
+	r.done = true
 	return nil
 }
 
@@ -125,8 +127,15 @@ func main() {
 	for range ticker.C {
 		mu.Lock()
 		for _, r := range roomKeeper {
-			if r.Len() == 2 {
-				r.ExchangePeers(ln)
+			if !r.done {
+				if r.Len() == 2 {
+					err := r.ExchangePeers(ln)
+					if err == nil {
+						log.Printf("Peers <%s> and <%s> have exchanged their addresses!\n", r.peers[0].IP(), r.peers[1].IP())
+					}
+				}
+			} else {
+				continue
 			}
 		}
 		mu.Unlock()
