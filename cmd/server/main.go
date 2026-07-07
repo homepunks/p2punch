@@ -105,7 +105,7 @@ func main() {
 				mu.Lock()
 				roomKeeper[roomName] = room
 				mu.Unlock()
-				log.Printf("Peer 1 <%s> joined. Room %s: %d/2\n", peer.IP(), roomName, room.Len())
+				log.Printf("Peer 1 <%s> joined. Room %s: [%d/2]\n", peer.IP(), roomName, room.Len())
 
 				continue
 			}
@@ -116,7 +116,7 @@ func main() {
 				log.Printf("Client <%s> tried to join room %s: %v\n", peer.IP(), roomName, err)
 				continue
 			}
-			log.Printf("Peer 2 <%s> joined. Room %s: %d/2\n", peer.IP(), roomName, room.Len())
+			log.Printf("Peer 2 <%s> joined. Room %s: [%d/2]\n", peer.IP(), roomName, room.Len())
 		}
 	}()
 
