@@ -102,29 +102,25 @@ func main() {
 
 			roomName := string(buf[:n])
 			roomName = strings.TrimSuffix(roomName, "\n")
-			mu.Lock()
-			room, exists := roomKeeper[roomName]
-			mu.Unlock()
-			if !exists {
-				room := new(Room)
-				peer := NewPeer(cAddr)
-				room.Add(peer)
-				mu.Lock()
-				roomKeeper[roomName] = room
-				mu.Unlock()
-				log.Printf("Peer 1 <%s> joined. Room %s: [%d/2]\n", peer.IP(), roomName, room.Len())
-
-				continue
-			}
 
 			peer := NewPeer(cAddr)
+
+			mu.Lock()
+			room, exists := roomKeeper[roomName]
+			if !exists {
+				room = new(Room)
+				roomKeeper[roomName] = room
+			}
 			err = room.Add(peer)
+			n = room.Len()
+			mu.Unlock()
+
 			if err != nil {
 				log.Printf("Client <%s> tried to join room %s (already closed): %v\n", peer.IP(), roomName, err)
 				disconnectClient(ln, peer)
 				continue
 			}
-			log.Printf("Peer 2 <%s> joined. Room %s: [%d/2]\n", peer.IP(), roomName, room.Len())
+			log.Printf("Peer <%s> joined. Room %s: [%d/2]\n", peer.IP(), roomName, n)
 		}
 	}()
 
