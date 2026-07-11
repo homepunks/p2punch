@@ -28,6 +28,12 @@ type Room struct {
 type RoomName = string
 
 func (r *Room) Add(p *Peer) error {
+	for i := 0; i < r.count; i++ {
+		if r.peers[i].IP() == p.IP() {
+			return nil /* already registered */
+		}
+	}
+
 	if r.count >= 2 {
 		return ErrFull
 	}
