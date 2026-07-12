@@ -12,5 +12,7 @@ go build ./cmd/server
 and then connect with a client, specifying the room name for you and your peer:
 ```console
 go build ./cmd/client
-./client --room "huckleberry"
+./client --room huckleberry --addr 93.184.216.34
 ```
+> **warning:** do not specify the port for the `addr` flag. p2punch prefers 6969, please respect it
+
