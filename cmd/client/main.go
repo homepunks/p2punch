@@ -123,7 +123,7 @@ func main() {
 		return
 	}
 
-	host := *addrPtr
+	host := *addrPtr + ":6969"
 	serverAddr, err := net.ResolveUDPAddr("udp", host)
 	if err != nil {
 		log.Fatalf("could not resolve server address: %v\n", err)
