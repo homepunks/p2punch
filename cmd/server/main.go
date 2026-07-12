@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	HOST = "127.0.0.1:6969"
+	HOST = "0.0.0.0:6969"
 )
 
 var ErrFull = errors.New("a room cannot hold more than 2 peers")

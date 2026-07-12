@@ -110,6 +110,7 @@ func session(conn *net.UDPConn, peer *net.UDPAddr) {
 
 func main() {
 	roomPtr := flag.String("room", "", "room name for you and your peer")
+	addrPtr  := flag.String("addr", "", "ip of the rendezvous server")
 	flag.Parse()
 
 	if *roomPtr == "" {
@@ -117,7 +118,13 @@ func main() {
 		return
 	}
 
-	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:6969")
+	if *addrPtr == "" {
+		fmt.Println("Please specify your rendezvous server's IP!")
+		return
+	}
+
+	host := *addrPtr
+	serverAddr, err := net.ResolveUDPAddr("udp", host)
 	if err != nil {
 		log.Fatalf("could not resolve server address: %v\n", err)
 	}
