@@ -1,85 +1,18 @@
 package main
 
 import (
-	"errors"
 	"log"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/homepunks/p2punch/server"
 )
 
 const (
 	HOST = "0.0.0.0:6969"
 )
-
-var ErrFull = errors.New("a room cannot hold more than 2 peers")
-
-type Peer struct {
-	ip *net.UDPAddr
-}
-
-type Room struct {
-	peers [2]*Peer
-	count int
-	done  bool
-}
-
-type RoomName = string
-
-func (r *Room) Add(p *Peer) error {
-	for i := 0; i < r.count; i++ {
-		if r.peers[i].IP() == p.IP() {
-			return nil /* already registered */
-		}
-	}
-
-	if r.count >= 2 {
-		return ErrFull
-	}
-
-	r.peers[r.count] = p
-	r.count++
-	return nil
-}
-
-func (r *Room) Len() int {
-	return r.count
-}
-
-func (r *Room) ExchangePeers(ln *net.UDPConn) error {
-	peerA := r.peers[0]
-	peerB := r.peers[1]
-	addrPeerA := []byte(peerA.IP())
-	addrPeerB := []byte(peerB.IP())
-
-	_, err := ln.WriteToUDP(addrPeerA, peerB.ip)
-	if err != nil {
-		return err
-	}
-	_, err = ln.WriteToUDP(addrPeerB, peerA.ip)
-	if err != nil {
-		return err
-	}
-
-	r.done = true
-	return nil
-}
-
-func disconnectClient(ln *net.UDPConn, p *Peer) {
-	msg := []byte("KICKED")
-	ln.WriteToUDP(msg, p.ip)
-}
-
-func NewPeer(ip *net.UDPAddr) *Peer {
-	return &Peer{
-		ip: ip,
-	}
-}
-
-func (p *Peer) IP() string {
-	return p.ip.String()
-}
 
 func main() {
 	addr, err := net.ResolveUDPAddr("udp", HOST)
@@ -95,7 +28,7 @@ func main() {
 
 	log.Printf("Listening UDP connections on %v\n", HOST)
 	var mu sync.Mutex
-	roomKeeper := make(map[RoomName]*Room)
+	roomKeeper := make(map[server.RoomName]*server.Room)
 
 	go func() {
 		buf := make([]byte, 1024)
@@ -109,12 +42,12 @@ func main() {
 			roomName := string(buf[:n])
 			roomName = strings.TrimSuffix(roomName, "\n")
 
-			peer := NewPeer(cAddr)
+			peer := server.NewPeer(cAddr)
 
 			mu.Lock()
 			room, exists := roomKeeper[roomName]
 			if !exists {
-				room = new(Room)
+				room = new(server.Room)
 				roomKeeper[roomName] = room
 			}
 			err = room.Add(peer)
@@ -123,7 +56,7 @@ func main() {
 
 			if err != nil {
 				log.Printf("Client <%s> tried to join room %s (already closed): %v\n", peer.IP(), roomName, err)
-				disconnectClient(ln, peer)
+				server.DisconnectClient(ln, peer)
 				continue
 			}
 			log.Printf("Peer <%s> joined. Room %s: [%d/2]\n", peer.IP(), roomName, n)
@@ -135,11 +68,11 @@ func main() {
 	for range ticker.C {
 		mu.Lock()
 		for name, r := range roomKeeper {
-			if !r.done {
+			if !r.Done() {
 				if r.Len() == 2 {
 					err := r.ExchangePeers(ln)
 					if err == nil {
-						log.Printf("%s: peers <%s> and <%s> have exchanged their addresses!\n", name, r.peers[0].IP(), r.peers[1].IP())
+						log.Printf("%s: peers <%s> and <%s> have exchanged their addresses!\n", name, r.Peers()[0].IP(), r.Peers()[1].IP())
 					}
 				}
 			} else {
