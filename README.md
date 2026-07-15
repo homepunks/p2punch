@@ -5,8 +5,11 @@ p2punch uses a technique called [UDP hole punching](https://en.wikipedia.org/wik
 ## usage
 deploy the server first:
 ```console
-go build ./cmd/server
-./server
+docker build -f Containerfile -t p2punch .
+docker run -d --name p2punch -p 6969:6969/udp p2punch
+
+# make sure your firewall has the port open for udp
+sudo ufw allow 6969/udp
 ```
 
 and then connect with a client, specifying the room name for you and your peer:
