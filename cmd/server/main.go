@@ -4,81 +4,55 @@ import (
 	"log"
 	"net"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/homepunks/p2punch/server"
 )
 
-const (
-	HOST = "0.0.0.0:6969"
-)
+const host = "0.0.0.0:6969"
 
 func main() {
-	addr, err := net.ResolveUDPAddr("udp", HOST)
+	addr, err := net.ResolveUDPAddr("udp", host)
 	if err != nil {
 		log.Fatalf("could not resolve addr: %v", err)
 	}
 
-	ln, err := net.ListenUDP("udp", addr)
+	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		log.Fatalf("could not listen: %v", err)
 	}
-	defer ln.Close()
+	defer conn.Close()
 
-	log.Printf("Listening UDP connections on %v\n", HOST)
-	var mu sync.Mutex
-	roomKeeper := make(map[server.RoomName]*server.Room)
+	log.Printf("listening for UDP connections on %s", host)
+
+	hub := server.NewHub()
 
 	go func() {
 		buf := make([]byte, 1024)
 		for {
-			n, cAddr, err := ln.ReadFromUDP(buf)
+			n, peerAddr, err := conn.ReadFromUDP(buf)
 			if err != nil {
 				log.Printf("read error: %v", err)
 				continue
 			}
 
-			roomName := string(buf[:n])
-			roomName = strings.TrimSuffix(roomName, "\n")
+			name := strings.TrimSuffix(string(buf[:n]), "\n")
 
-			peer := server.NewPeer(cAddr)
-
-			mu.Lock()
-			room, exists := roomKeeper[roomName]
-			if !exists {
-				room = new(server.Room)
-				roomKeeper[roomName] = room
-			}
-			err = room.Add(peer)
-			n = room.Len()
-			mu.Unlock()
-
+			count, err := hub.Join(name, peerAddr)
 			if err != nil {
-				log.Printf("Client <%s> tried to join room %s (already closed): %v\n", peer.IP(), roomName, err)
-				server.DisconnectClient(ln, peer)
+				log.Printf("peer <%s> rejected from room %s: %v", peerAddr, name, err)
+				server.Kick(conn, peerAddr)
 				continue
 			}
-			log.Printf("Peer <%s> joined. Room %s: [%d/2]\n", peer.IP(), roomName, n)
+			log.Printf("peer <%s> joined room %s [%d/2]", peerAddr, name, count)
 		}
 	}()
 
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
-		mu.Lock()
-		for name, r := range roomKeeper {
-			if !r.Done() {
-				if r.Len() == 2 {
-					err := r.ExchangePeers(ln)
-					if err == nil {
-						log.Printf("%s: peers <%s> and <%s> have exchanged their addresses!\n", name, r.Peers()[0].IP(), r.Peers()[1].IP())
-					}
-				}
-			} else {
-				continue
-			}
+		for _, ex := range hub.Ready(conn) {
+			log.Printf("%s: peers <%s> and <%s> have exchanged their addresses", ex.Room, ex.A, ex.B)
 		}
-		mu.Unlock()
 	}
 }
